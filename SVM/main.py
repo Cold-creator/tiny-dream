@@ -18,24 +18,24 @@ import PySimpleGUI as sg # gui工具包
 import codecs
 import warnings #忽略告警
 warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
+#导入所需工具包
 
 
-
-def read_data():
+def read_data():  #数据预处理模块
     wds = Seg()
     # 分词后的数据集存放在data文件夹中data.seg.txt里
     target = codecs.open('./data/data.seg.txt', 'w', encoding='utf8')
     # 待分词文档导入
-    with open('./data/data.txt',encoding='utf8') as f:
-        line = f.readline()
+    with open('./data/data.txt',encoding='utf8') as f: #打开原始数据集
+        line = f.readline()#逐行读取
         # 逐行进行分词处理
         while line:
-            seg_list = wds.cut(line, cut_all=False)
+            seg_list = wds.cut(line, cut_all=False)#分词与去平行词操作（重点！！）
             line_seg = ' '.join(seg_list)
             if len(line_seg)<50:
-                pass
+                pass  #部分选择忽略
             else:
-                target.writelines(line_seg)
+                target.writelines(line_seg)#写入目标文件
             line = f.readline()
         f.close()
         target.close()
@@ -46,23 +46,23 @@ def getWordVecs(wordList, model):
     for word in wordList:
         word = word.replace('\n', '')
         try:
-            vecs.append(model[word])
+            vecs.append(model[word])#调用模型并将词转换为词向量
             #vecs.append(model.wv.__getitem__(word))
         except KeyError:
             continue
     return np.array(vecs, dtype='float')
 
 def buildVecs(data,model):
-    label = []
-    fileVecs = []
+    label = []#获取数据标签
+    fileVecs = []#获取数据向量
     for line in data:
-        wordList = line.split(' ')
-        vecs = getWordVecs(wordList, model)
+        wordList = line.split(' ')#数据逐行读取
+        vecs = getWordVecs(wordList, model)#获取词向量，getWordVecs(wordList, model)函数见行44定义
         if len(vecs) > 0:
             vecsArray = sum(np.array(vecs)) / len(vecs)  # mean
             fileVecs.append(vecsArray)
             # print(vecsArray)
-            label.append(line[0])
+            label.append(line[0])#每一句话的向量由句中所有词的词向量求和后平均得到
     return fileVecs,label
 def get_data_wordvec():
     # inp为输入语料,outp为word2vec的vector格式
@@ -91,9 +91,9 @@ def word2vec_():
     f.close()
 
     # 训练skip-gram模型
-    model_ = Word2Vec(LineSentence(inp), size=100, window=5, min_count=5, workers=multiprocessing.cpu_count())
-    model_.wv.save_word2vec_format(outp, binary=False)
-    Input22,label = buildVecs(data, model_)
+    model_ = Word2Vec(LineSentence(inp), size=100, window=5, min_count=5, workers=multiprocessing.cpu_count())#定义未处理模型
+    model_.wv.save_word2vec_format(outp, binary=False)#模型保存
+    Input22,label = buildVecs(data, model_)#调用模型并转换为向量模式，buildVecs(data, model_)函数见55行定义
 
     X = Input22[:]
     df_x = pd.DataFrame(X)
@@ -103,8 +103,8 @@ def word2vec_():
     data.to_csv('./data/word2vec.csv')
 
 def classification_():
-    df = pd.read_csv('./data/word2vec.csv')
-    # 读取标签
+    df = pd.read_csv('./data/word2vec.csv')#词向量作数据集
+    # 读取第一列数据为标签
     y = df.iloc[:, 1]
     print(y)
     # 标签对应的情感
@@ -112,38 +112,38 @@ def classification_():
     # 读取数据
     x = df.iloc[:, 2:]
     print(x)
-    # 将训练集划分训练、验证两部分
+    # 将训练集按7:3的比例划分为训练、验证两部分
     X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=42)
     print('支持向量机....')
     clf = svm.SVC(C=100, probability=True)
-    clf.fit(X_train, y_train)
-    joblib.dump(clf, "./model/model.m")
+    clf.fit(X_train, y_train)#使用训练集进行模型训练
+    joblib.dump(clf, "./model/model.m")#保持训练好的模型
     print('混淆矩阵')
-    cv_conf = confusion_matrix(y_test, clf.predict(X_test))
+    cv_conf = confusion_matrix(y_test, clf.predict(X_test))#利用验证集进行验证，输出混淆矩阵
     display_cm(cv_conf, labels, display_metrics=True, hide_zeros=False)
 
     print('准确率: %.2f' % clf.score(x, y))
-    print('..................................')
+    print('..................................')#输出验证准确率结果
 
 def predict_(a):
     inp = './data/data.seg.text.vector'
 
-    model = gensim.models.KeyedVectors.load_word2vec_format(inp, binary=False)
+    model = gensim.models.KeyedVectors.load_word2vec_format(inp, binary=False)#使用word2vec模型得到词向量vecs
     wds = Seg()
-    seg_list = wds.cut(a, cut_all=False)
+    seg_list = wds.cut(a, cut_all=False)#分词
     # print(11,seg_list)
     line_seg = ' '.join(seg_list)
     line_seg = line_seg.split(' ')
     vecs = getWordVecs(line_seg, model)
     # print(vecs)
     if len(vecs) > 0:
-        vecsArray = sum(np.array(vecs)) / len(vecs)  # mean
+        vecsArray = sum(np.array(vecs)) / len(vecs)  # mean#求平均方式得到句向量
         clf = joblib.load("./model/model.m")
         vecsArray = vecsArray.reshape(1, 100)
         kk = clf.predict(vecsArray)
         # label = ["表达开心","表达伤心","表达恶心","表达生气","表达害怕","表达惊喜"]
         # return label[kk[0]]
-        #
+        #调用训练好的模型进行判断
         if kk == [0]:
             return "表达开心"
         if kk == [1]:
@@ -163,21 +163,21 @@ def read_table_data(filename):
         data = list(reader)  # read everything else into a list of rows
     return data
 
-def make_window(theme):
+def make_window(theme):#窗口创建
     sg.theme(theme)
     # 菜单栏
     menu_def = [['Help', ['About...', ['你好']]], ]
-    # 主界面之一：文本识别界面
+    # 菜单栏，主界面之一：文本识别界面
     News_detection = [
         [sg.Menu(menu_def, tearoff=True)],
         [sg.Text('')],
-        [sg.Multiline(s=(60, 20), key='_INPUT_news_', expand_x=True)],
+        [sg.Multiline(s=(60, 20), key='_INPUT_news_', expand_x=True)],#多行输入
         [sg.Text('')],
         [sg.Text('', s=(12)), sg.Text('识别结果：', font=("Helvetica", 15)),
          sg.Text('     ', key='_OUTPUT_news_', font=("Helvetica", 15))],
         [sg.Text('')],
         [sg.Text('', s=(12)), sg.Button('识别', font=("Helvetica", 15)), sg.Text('', s=(10)),
-         sg.Button('清空', font=("Helvetica", 15)),
+         sg.Button('清空', font=("Helvetica", 15)),#两个操作按钮
          sg.Text('', s=(4))],
         [sg.Text('')],
         [sg.Sizegrip()]
@@ -200,7 +200,7 @@ def make_window(theme):
                   )
          ],
 
-        [sg.Button('删除选中的结果', font=("Helvetica", 15)), sg.Button('查看识别结果', font=("Helvetica", 15))],
+        [sg.Button('删除选中的结果', font=("Helvetica", 15)), sg.Button('查看识别结果', font=("Helvetica", 15))],#判断后两个操作按钮
         [sg.Sizegrip()]
 
     ]
@@ -227,27 +227,28 @@ def main_WINDOW():
     window = make_window(sg.theme())
     while True:
         event, values = window.read(timeout=100)
-
+        # “退出”按钮
         if event in (None, 'Exit'):
             print("[LOG] Clicked Exit!")
             break
-
+        # “识别”按钮
         elif event == '识别':
             kk = predict_(values['_INPUT_news_'])
             time2 = time.strftime('%Y-%m-%d %H:%M:%S')
             newuser = [values['_INPUT_news_'], time2, kk]
-            with open('./data/table_data.csv', 'a', newline='') as studentDetailsCSV:
+            with open('./data/table_data.csv', 'a', newline='') as studentDetailsCSV:#结果信息写入文件
                 writer = csv.writer(studentDetailsCSV, dialect='excel')
                 writer.writerow(newuser)
-            window['_OUTPUT_news_'].update(kk)
+            window['_OUTPUT_news_'].update(kk)#数据更新与显示
             window["-TABLE_de-"].update(values=read_table_data('./data/table_data.csv')[1:][:])
-
+        # “清空”按钮
         elif event == '清空':
             window['_OUTPUT_news_'].update(' ')
             window['_INPUT_news_'].update('')
+         # “查看识别结果”按钮
         elif event == '查看识别结果':
-            window["-TABLE_de-"].update(values=read_table_data('./data/table_data.csv')[1:][:])
-
+            window["-TABLE_de-"].update(values=read_table_data('./data/table_data.csv')[1:][:])#更新table文件
+        # “删除选中的结果”按钮
         elif event == '删除选中的结果':
             data = pd.read_csv('./data/table_data.csv', encoding='gbk')
             data.drop(data.index[int(values['-TABLE_de-'][0])], inplace=True)
@@ -260,8 +261,8 @@ def main_WINDOW():
     exit(0)
 
 if __name__ == '__main__':
-    read_data()
-    word2vec_()
-    classification_()
+    #read_data()
+    #word2vec_()
+    #classification_()
     sg.theme()
     main_WINDOW()

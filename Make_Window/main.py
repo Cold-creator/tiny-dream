@@ -12,6 +12,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from sklearn.metrics import precision_score, accuracy_score, f1_score, recall_score
 from tensorflow.python.keras.callbacks import TensorBoard,EarlyStopping
 import PySimpleGUI as sg
+#导入所需工具包
 
 # 数据处理
 # """判断一个unicode是否是汉字"""
@@ -20,6 +21,8 @@ def is_chinese(uchar):
         return True
     else:
         return False
+    
+#汉字保留操作
 def reserve_chinese(content):
     content_str = ''
     for i in content:
@@ -28,32 +31,32 @@ def reserve_chinese(content):
     return content_str
 def getStopWords():
     file = open('./data/stopwords.txt', 'r',encoding='utf8')
-    words = [i.strip() for i in file.readlines()]
+    words = [i.strip() for i in file.readlines()]#每一个词进行逐行读取
     file.close()
     return words
-def dataParse(text, stop_words):
+def dataParse(text, stop_words):#定义处理数据集的函数（数据集清洗操作）
     label, content, = text.split('	####	')
     # label = label_map[label]
-    content = reserve_chinese(content)
-    words = lcut(content)
+    content = reserve_chinese(content)#保留中文
+    words = lcut(content)#jieba分词
     words = [i for i in words if not i in stop_words]
     return words, int(label)
 
-def getData(file='./data/data.txt',):
+def getData(file='./data/data.txt',):#数据集处理整体过程
     file = open(file, 'r',encoding='gbk')
-    texts = file.readlines()
+    texts = file.readlines()#逐行读取数据集文件
     file.close()
-    stop_words = getStopWords()
-    all_words = []
-    all_labels = []
+    stop_words = getStopWords()#得到去停用词表
+    all_words = []#存放文本
+    all_labels = []#存放标签
     for text in texts:
         content, label = dataParse(text, stop_words)
         if len(content) <= 0:
-            continue
-        all_words.append(content)
-        all_labels.append(label)
+            continue  #文件内容过滤
+        all_words.append(content)#文本内容添加
+        all_labels.append(label)#标签内容添加
     return all_words,all_labels
-
+#以上为数据集清洗操作
 
 ## 读取测数据集
 data,label = getData()
@@ -62,7 +65,7 @@ X_train, X_t, train_y, v_y = train_test_split(data,label,test_size=0.3, random_s
 X_val, X_test, val_y, test_y = train_test_split(X_t,v_y,test_size=0.5, random_state=42)
 # print(X_train)
 
-## 对数据集的标签数据进行one-hot编码
+## 对数据集的标签数据进行one-hot编码（将文本词向量化）
 ohe = OneHotEncoder()
 train_y = ohe.fit_transform(np.array(train_y).reshape(-1,1)).toarray()
 val_y = ohe.transform(np.array(val_y).reshape(-1,1)).toarray()
@@ -83,18 +86,18 @@ test_seq = tok.texts_to_sequences(X_test)
 train_seq_mat = sequence.pad_sequences(train_seq,maxlen=max_len)
 val_seq_mat = sequence.pad_sequences(val_seq,maxlen=max_len)
 test_seq_mat = sequence.pad_sequences(test_seq,maxlen=max_len)
-num_classes = 2
+num_classes = 2#数据预处理
 ## 定义LSTM模型
 inputs = Input(name='inputs',shape=[max_len])
 ## Embedding(词汇表大小,batch大小,每个新闻的词长)
 layer = Embedding(max_words+1,128,input_length=max_len)(inputs)
-layer = LSTM(128, dropout=0.2, recurrent_dropout=0.2)(layer)
-layer = Dense(128,activation="relu",name="FC1")(layer)
-layer = Dropout(0.5)(layer)
-layer = Dense(2,activation="softmax",name="FC2")(layer)
+layer = LSTM(128, dropout=0.2, recurrent_dropout=0.2)(layer)#长短期记忆网络
+layer = Dense(128,activation="relu",name="FC1")(layer)#全连接
+layer = Dropout(0.5)(layer)#随机丢弃
+layer = Dense(2,activation="softmax",name="FC2")(layer)#再全连接，输出两位（因为有两类数据）
 model = Model(inputs=inputs,outputs=layer)
 model.summary()
-model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])#定义损失函数与优化方法
 # # #模型训练
 # model.fit(train_seq_mat,train_y,batch_size=128,epochs=10,
 #                           validation_data=(val_seq_mat,val_y),
