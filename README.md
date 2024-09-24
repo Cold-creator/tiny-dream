@@ -5,7 +5,7 @@ This repository was created for an AISummerCamp of 2024, it was named after tiny
 # 使用版本条件
 
 根据组内调试情况，由于许多函数方法都随着库更新改掉了，部分库需要不同版本，
-这里以能够运行的版本（队长邓楚枫的环境配置为例子），要求情感分析系列代码所需环境（仅为例子，其他版本应该也可以运行）：
+这里以能够运行的版本（队长邓楚枫的环境配置)为例子，要求情感分析系列代码所需环境（仅为例子，其他版本应该也可以运行）：
 pip install gensim==3.8.1
 pip install numpy==1.19.5 
 pip install tensorflow==2.3.3 
